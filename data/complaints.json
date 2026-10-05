@@ -1,0 +1,209 @@
+[
+  {
+    "id": "CL-MUTLMNXE-OMYI",
+    "category": "damaged road",
+    "title": "Severely damaged road with multiple deep potholes",
+    "description": "The road surface is heavily degraded, featuring numerous large and deep potholes, many of which are filled with water.",
+    "report": "This report identifies a section of road in a severely damaged condition. The presence of numerous large potholes, some of which are filled with water, presents a serious hazard to all road users. The water-filled cavities obscure the true depth of the damage, increasing the risk of vehicle damage and loss of control. Immediate maintenance and repair are required to ensure public safety.",
+    "severity": 7,
+    "confidence": 0.95,
+    "evidence": [
+      "Multiple large, deep potholes are visible across the main roadway.",
+      "Potholes are filled with water, obscuring the actual depth and shape of the road damage.",
+      "The asphalt surface is uneven, fragmented, and shows extensive breakage."
+    ],
+    "risk": "Potential for significant vehicle damage (tires, suspension) and an increased risk of accidents, particularly for two-wheeled vehicles navigating the uneven and obscured surface.",
+    "recommendedAction": "Conduct an immediate inspection of the road section and carry out urgent pothole repairs and subsequent resurfacing.",
+    "department": "Roads & Public Works Department",
+    "status": "Submitted",
+    "createdAt": "2026-10-04T09:08:48.779Z",
+    "updatedAt": "2026-10-04T09:08:48.779Z",
+    "location": {
+      "latitude": 20.0331441,
+      "longitude": 73.7960542,
+      "accuracy": null,
+      "source": "user",
+      "displayName": "Nashik RTO Office, Mhasrul, Nashik, Maharashtra, 422001"
+    }
+  },
+  {
+    "id": "CL-DEMO-001",
+    "category": "pothole",
+    "title": "Multiple water-filled potholes on Nashik Road",
+    "description": "Several potholes and broken asphalt are visible across the road surface, creating an uneven path for two-wheelers and cars.",
+    "severity": 8,
+    "confidence": 0.96,
+    "department": "Roads & Public Works Department",
+    "status": "Submitted",
+    "location": {
+      "latitude": 19.997453,
+      "longitude": 73.789802,
+      "displayName": "Bytco Point, Nashik Road, Nashik"
+    },
+    "imageUrl": "https://maharashtratimes.com/photogallery/news/nashik-news-poth-hole-on-main-road-bad-condition-after-rain-photos/photo/102144644.cms",
+    "imageSource": "Maharashtra Times — Nashik pothole photo gallery",
+    "imageNote": "Nashik road image; exact demo pin is representative."
+  },
+  {
+    "id": "CL-DEMO-002",
+    "category": "waterlogging",
+    "title": "Road waterlogging near Panchavati",
+    "description": "Standing rainwater covers a substantial section of the carriageway, forcing vehicles to move slowly through the flooded stretch.",
+    "severity": 7,
+    "confidence": 0.94,
+    "department": "Drainage & Public Works Department",
+    "status": "In Progress",
+    "location": {
+      "latitude": 20.0069,
+      "longitude": 73.793,
+      "displayName": "Panchavati, Nashik"
+    },
+    "imageUrl": "https://feeds.abplive.com/onecms/images/uploaded-images/2024/12/06/4402d2ccdd0bac5139528f5ac7502afca32a7.jpg?impolicy=abp_cdn&imwidth=720",
+    "imageSource": "ABP Live — Nashik pothole/waterlogging photos",
+    "imageNote": "Nashik image; exact demo pin is representative."
+  },
+  {
+    "id": "CL-DEMO-003",
+    "category": "garbage",
+    "title": "Garbage accumulation along roadside",
+    "description": "A large mixed pile of household and organic waste is spread along the roadside, with loose material extending into the pedestrian area.",
+    "severity": 6,
+    "confidence": 0.97,
+    "department": "Sanitation & Waste Management Department",
+    "status": "Assigned",
+    "location": {
+      "latitude": 20.0069,
+      "longitude": 73.793,
+      "displayName": "Panchavati, Nashik"
+    },
+    "imageUrl": "https://media.assettype.com/freepressjournal/2025-09-23/3056n1ss/1000447158.jpg?auto=format%2Ccompress&ogImage=true&rect=0%2C0%2C3900%2C2194&w=1200",
+    "imageSource": "Free Press Journal — garbage pile-up on Igatpuri Municipal Road",
+    "imageNote": "Real Nashik district image; the demo pin is moved to Panchavati so the dataset remains city-focused."
+  },
+  {
+    "id": "CL-DEMO-004",
+    "category": "water leakage",
+    "title": "Major water pipeline burst on road",
+    "description": "A large volume of water is visibly escaping onto the roadway during excavation work, causing surface flooding.",
+    "severity": 9,
+    "confidence": 0.98,
+    "department": "Water Supply Department",
+    "status": "In Progress",
+    "location": {
+      "latitude": 20.00111,
+      "longitude": 73.71836,
+      "displayName": "Satpur MIDC, Nashik"
+    },
+    "imageUrl": "https://static.toiimg.com/thumb/msid-130292375%2Cwidth-1280%2Cheight-720%2Cimgsize-100188%2Cresizemode-6%2Coverlay-toi_sw%2Cpt-32%2Cy_pad-600/photo.jpg",
+    "imageSource": "Times of India — pipeline burst in Satpur",
+    "imageNote": "Real Satpur image and incident location."
+  },
+  {
+    "id": "CL-DEMO-005",
+    "category": "overflowing drain",
+    "title": "Overflowing drainage chamber",
+    "description": "Wastewater is visible around drainage infrastructure, with standing dirty water affecting the roadside area.",
+    "severity": 8,
+    "confidence": 0.91,
+    "department": "Drainage & Public Works Department",
+    "status": "Submitted",
+    "location": {
+      "latitude": 20.00049,
+      "longitude": 73.71836,
+      "displayName": "Satpur Division, Nashik"
+    },
+    "imageUrl": "https://static.toiimg.com/thumb/msid-92942320%2Cwidth-1280%2Cheight-720%2Cresizemode-72/92942320.jpg",
+    "imageSource": "Times of India — overflowing drains in Satpur division",
+    "imageNote": "Real Nashik image; exact demo pin is representative within Satpur."
+  },
+  {
+    "id": "CL-DEMO-006",
+    "category": "damaged road",
+    "title": "Road excavation left residential lane unsafe",
+    "description": "A residential road has been excavated, leaving broken pavement, loose soil and construction debris across the usable roadway.",
+    "severity": 7,
+    "confidence": 0.95,
+    "department": "Roads & Public Works Department",
+    "status": "Assigned",
+    "location": {
+      "latitude": 19.973945,
+      "longitude": 73.781497,
+      "displayName": "Indira Nagar, Nashik"
+    },
+    "imageUrl": "https://media.assettype.com/freepressjournal/2024-03/9d3b55fe-9d7b-4a46-8ad1-d82f4461c12c/IMG_20240313_093503.jpg?width=1200",
+    "imageSource": "Free Press Journal — Nashik road digging/repair work",
+    "imageNote": "Real Nashik image; exact demo pin is representative."
+  },
+  {
+    "id": "CL-DEMO-007",
+    "category": "construction hazard",
+    "title": "Open road excavation from utility work",
+    "description": "A deep excavated trench, broken slabs and loose rubble occupy much of a residential road, restricting safe passage.",
+    "severity": 8,
+    "confidence": 0.97,
+    "department": "Public Works / Construction Safety Department",
+    "status": "In Progress",
+    "location": {
+      "latitude": 19.9742,
+      "longitude": 73.7819,
+      "displayName": "Indira Nagar, Nashik"
+    },
+    "imageUrl": "https://d3pc1xvrcw35tl.cloudfront.net/ln/images/1200x900/whatsapp-image-2024-04-24-at-17.17.34_202404728519.jpeg",
+    "imageSource": "Lokmat Times — Jijamai Housing Society road excavation",
+    "imageNote": "Real Nashik image and civic-work context."
+  },
+  {
+    "id": "CL-DEMO-008",
+    "category": "waterlogging",
+    "title": "Heavy water accumulation on Gangapur Road",
+    "description": "Floodwater is visibly covering the road and slowing two-wheelers and other traffic.",
+    "severity": 8,
+    "confidence": 0.96,
+    "department": "Drainage & Public Works Department",
+    "status": "Resolved",
+    "location": {
+      "latitude": 20.0116301,
+      "longitude": 73.7594472,
+      "displayName": "Gangapur Road, Nashik"
+    },
+    "imageUrl": "https://media.assettype.com/freepressjournal/2025-05-12/iivwy7ow/HKG0378.JPG?auto=format%2Ccompress&ogImage=true&rect=0%2C0%2C3900%2C2048&w=1200",
+    "imageSource": "Free Press Journal — Nashik rain and waterlogging",
+    "imageNote": "Real Nashik image; exact demo pin is representative along Gangapur Road."
+  },
+  {
+    "id": "CL-DEMO-009",
+    "category": "traffic congestion",
+    "title": "Severe traffic congestion at busy junction",
+    "description": "Multiple cars, two-wheelers, an auto-rickshaw and a large truck are tightly packed at a major urban junction.",
+    "severity": 5,
+    "confidence": 0.93,
+    "department": "Traffic & Road Safety Department",
+    "status": "Assigned",
+    "location": {
+      "latitude": 19.9526,
+      "longitude": 73.8373,
+      "displayName": "Mahatma Gandhi Road, Nashik"
+    },
+    "imageUrl": "https://static.toiimg.com/photo/msid-121088231%2Cimgsize-58384/121088231.jpg",
+    "imageSource": "Times of India — traffic on Mahatma Gandhi Road",
+    "imageNote": "Real Nashik image; exact demo pin is representative."
+  },
+  {
+    "id": "CL-DEMO-010",
+    "category": "broken streetlight",
+    "title": "Streetlights not functioning on service road",
+    "description": "A streetlight fixture is shown in a visibly damaged/non-functional position, representing a nighttime visibility complaint.",
+    "severity": 6,
+    "confidence": 0.89,
+    "department": "Electrical / Street Lighting Department",
+    "status": "Submitted",
+    "location": {
+      "latitude": 20.0104,
+      "longitude": 73.8069,
+      "displayName": "Adgaon Naka, Nashik"
+    },
+    "imageUrl": "https://static.toiimg.com/thumb/msid-67316756%2Cimgsize-735242%2Cwidth-400%2Cresizemode-4/67316756.jpg",
+    "imageSource": "Times of India Citizen Reporter — streetlight not working",
+    "imageNote": "Representative streetlight image, not a photo of Adgaon Naka. Nashik itself has documented defunct-streetlight complaints in the Adgaon Naka–MVP Medical College corridor."
+  }
+]
