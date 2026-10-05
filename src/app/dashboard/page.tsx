@@ -332,7 +332,7 @@ export default function DashboardPage() {
           <div className="mt-2 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
             <div>
               <h1 className="text-3xl font-black tracking-tight md:text-5xl">
-                City incident command.
+                CivicLens Incident Command.
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
                 Monitor reported civic issues, prioritize urgent incidents,
