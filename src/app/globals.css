@@ -518,3 +518,75 @@ body main:not(:has(.cl-hero)) h1 { letter-spacing: -.032em !important; }
 @media (max-width: 560px) {
   .cl-interior .cl-global-header { margin: 2px auto 17px !important; padding: 4px 0 14px !important; }
 }
+/* CivicLens final header polish: remove the interior-page header card and improve scale. */
+.cl-interior .cl-global-header,
+.cl-interior-verify .cl-global-header {
+  border: 0 !important;
+  border-bottom: 1px solid #d7e3f5 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  padding: 8px 0 17px !important;
+  margin: 8px auto 20px !important;
+}
+
+/* A larger, better-balanced CivicLens identity across every page. */
+.cl-global-brand { gap: 15px !important; }
+.cl-global-logo {
+  width: 108px !important;
+  height: 76px !important;
+  object-fit: contain !important;
+}
+.cl-global-divider { height: 45px !important; }
+.cl-global-brand-copy strong {
+  font-size: 13px !important;
+  letter-spacing: .135em !important;
+}
+.cl-global-brand-copy small {
+  font-size: 9px !important;
+  letter-spacing: .14em !important;
+}
+main .cl-global-nav { gap: 8px !important; }
+main .cl-global-nav a {
+  min-height: 42px !important;
+  padding: 0 15px !important;
+  font-size: 12px !important;
+  letter-spacing: .01em !important;
+}
+
+@media (max-width: 950px) {
+  .cl-interior .cl-global-header,
+  .cl-interior-verify .cl-global-header {
+    border: 0 !important;
+    border-bottom: 1px solid #d7e3f5 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 8px 0 15px !important;
+    margin: 8px auto 18px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .cl-interior .cl-global-header,
+  .cl-interior-verify .cl-global-header {
+    border: 0 !important;
+    border-bottom: 1px solid #d7e3f5 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 4px 0 14px !important;
+    margin: 2px auto 17px !important;
+  }
+  .cl-global-brand { gap: 10px !important; }
+  .cl-global-logo { width: 82px !important; height: 58px !important; }
+  .cl-global-divider { height: 36px !important; }
+  .cl-global-brand-copy strong { font-size: 10px !important; letter-spacing: .1em !important; }
+  .cl-global-brand-copy small { font-size: 7.5px !important; letter-spacing: .075em !important; }
+  main .cl-global-nav a {
+    min-height: 40px !important;
+    padding: 0 8px !important;
+    font-size: 11px !important;
+  }
+}
