@@ -1,5 +1,7 @@
 "use client";
 
+import CivicLensHeader from "@/components/CivicLensHeader";
+
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 
@@ -288,42 +290,9 @@ export default function DashboardPage() {
     complaints.find((complaint) => complaint.id === selectedId) ?? null;
 
   return (
-    <main className="min-h-screen bg-[#06080c] text-white">
+    <main className="cl-interior cl-interior-dashboard">
       <div className="mx-auto max-w-[1500px] px-5 py-6 md:px-8">
-        <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="text-xl font-black tracking-[0.22em]">
-              CIVICLENS
-            </div>
-            <div className="mt-1 text-[10px] font-bold tracking-[0.2em] text-zinc-600">
-              AUTHORITY CONTROL CENTER
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <a
-              href="/"
-              className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400 transition hover:bg-white/[0.08]"
-            >
-              CITIZEN
-            </a>
-            <a
-              href="/track"
-              className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400 transition hover:bg-white/[0.08]"
-            >
-              TRACK
-            </a>
-            <a
-              href="/verify"
-              className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400 transition hover:bg-white/[0.08]"
-            >
-              VERIFY
-            </a>
-            <div className="rounded-full border border-emerald-400/20 bg-emerald-400/5 px-3 py-1.5 text-[10px] font-black tracking-widest text-emerald-400">
-              GEMMA 4
-            </div>
-          </div>
-        </header>
+        <CivicLensHeader active="authority" />
 
         <section className="mb-7">
           <div className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-400">
@@ -332,7 +301,7 @@ export default function DashboardPage() {
           <div className="mt-2 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
             <div>
               <h1 className="text-3xl font-black tracking-tight md:text-5xl">
-                CivicLens Incident Command.
+                Nashik incident command.
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
                 Monitor reported civic issues, prioritize urgent incidents,
@@ -465,7 +434,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="mt-1 text-[10px] leading-4 text-zinc-600">
                             {hotspot.complaints[0].location?.displayName ??
-                              "Incident cluster"}
+                              "Nashik incident cluster"}
                           </div>
                         </div>
                         <div className="rounded-full bg-orange-400/10 px-2 py-1 text-[9px] font-black text-orange-300">

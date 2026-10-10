@@ -1,430 +1,189 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import CivicLensHeader from "@/components/CivicLensHeader";
 
-type RewardLevel = {
-  name: string;
-  next: number | null;
-  start: number;
-};
+import { useEffect, useMemo, useState } from "react";
+import {
+  DEMO_REWARD_CATALOG,
+  DEMO_REWARDS_UPDATED_EVENT,
+  DEMO_REPORT_REWARD,
+  type DemoRewardOffer,
+  type DemoRewardState,
+} from "@/lib/demo-rewards";
 
-function getLevel(points: number): RewardLevel {
-  if (points >= 2500) {
-    return {
-      name: "CIVIC CHAMPION",
-      next: null,
-      start: 2500,
-    };
+type Reward = DemoRewardOffer;
+
+const rewards = DEMO_REWARD_CATALOG;
+
+type WalletLoadResponse = { ok: boolean; data: { state?: DemoRewardState; error?: string } };
+
+// React Strict Mode can run mount effects twice in development. Share a single
+// bootstrap GET so simultaneous first requests do not mint multiple anonymous wallets.
+let walletBootstrapRequest: Promise<WalletLoadResponse> | null = null;
+
+function loadWalletBootstrap(): Promise<WalletLoadResponse> {
+  if (!walletBootstrapRequest) {
+    walletBootstrapRequest = fetch("/api/demo-rewards", { cache: "no-store" }).then(async (response) => ({
+      ok: response.ok,
+      data: await response.json() as { state?: DemoRewardState; error?: string },
+    }));
   }
-
-  if (points >= 1000) {
-    return {
-      name: "COMMUNITY GUARDIAN",
-      next: 2500,
-      start: 1000,
-    };
-  }
-
-  if (points >= 500) {
-    return {
-      name: "CIVIC CONTRIBUTOR",
-      next: 1000,
-      start: 500,
-    };
-  }
-
-  if (points >= 100) {
-    return {
-      name: "CIVIC SCOUT",
-      next: 500,
-      start: 100,
-    };
-  }
-
-  return {
-    name: "NEW CITIZEN",
-    next: 100,
-    start: 0,
-  };
+  const request = walletBootstrapRequest;
+  return request.finally(() => {
+    if (walletBootstrapRequest === request) walletBootstrapRequest = null;
+  });
 }
 
-const rewards = [
-  {
-    points: 500,
-    title: "₹50 LOCAL PARTNER VOUCHER",
-    description:
-      "A small everyday reward sponsored by a participating local café, store or service.",
-    status: "PARTNER REWARD",
-  },
-  {
-    points: 1000,
-    title: "₹100 LOCAL PARTNER VOUCHER",
-    description:
-      "A higher-value discount or voucher from a participating community partner.",
-    status: "PARTNER REWARD",
-  },
-  {
-    points: 2500,
-    title: "CIVIC CHAMPION CERTIFICATE",
-    description:
-      "Recognition for sustained, high-quality civic participation and verified impact.",
-    status: "CITY RECOGNITION",
-  },
-  {
-    points: 5000,
-    title: "PREMIUM CIVIC REWARD",
-    description:
-      "Future city campaigns can offer larger sponsored rewards to top contributors.",
-    status: "SPONSORED REWARD",
-  },
-];
+const categories = ["All rewards", "Food & drink", "Shopping", "Everyday", "Community"] as const;
+type Category = (typeof categories)[number];
+
+function MiniIllustration({ kind }: { kind: "city" | "ticket" }) {
+  if (kind === "city") {
+    return <svg viewBox="0 0 340 170" aria-hidden="true" className="rw-city-art"><circle cx="274" cy="43" r="28" fill="#FFD28B"/><path d="M0 145 Q50 120 95 143 T190 140 T340 132 V170 H0Z" fill="#CDEDE5"/><path d="M28 145V82H70V145M80 145V55H125V145M138 145V95H174V145M187 145V68H233V145M245 145V100H285V145M293 145V75H324V145" fill="#9EC9F5" stroke="#fff" strokeWidth="4"/><path d="M37 95h9m-9 15h9m-9 15h9M91 72h9m-9 15h9m-9 15h9m-9 15h9M199 83h9m-9 15h9m-9 15h9m-9 15h9M255 113h9m-9 13h9m-9 13h9" stroke="#fff" strokeWidth="4" strokeLinecap="round"/><path d="M0 151 Q35 132 72 150 T155 150 T240 146 T340 148" fill="none" stroke="#168C80" strokeWidth="3"/></svg>;
+  }
+  return <svg viewBox="0 0 120 90" aria-hidden="true" className="rw-ticket-art"><path d="M10 17Q10 10 18 10H102Q110 10 110 18V30A10 10 0 0 0 110 50V72Q110 80 102 80H18Q10 80 10 72V50A10 10 0 0 0 10 30Z" fill="currentColor" opacity=".13"/><path d="M60 20V70" stroke="currentColor" strokeDasharray="4 5" strokeWidth="2" opacity=".5"/><circle cx="36" cy="44" r="10" fill="currentColor" opacity=".35"/><path d="m32 44 3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+}
+
+function moneyDelta(value: number) {
+  return value > 0 ? `+${value}` : String(value);
+}
 
 export default function RewardsPage() {
-  const [points, setPoints] = useState(0);
+  const [state, setState] = useState<DemoRewardState>({ balance: 0, reports: [], claims: [], ledger: [] });
+  const [category, setCategory] = useState<Category>("All rewards");
+  const [notice, setNotice] = useState("");
+  const [showWallet, setShowWallet] = useState(true);
+  const [showLedger, setShowLedger] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  // Render a deterministic shell during SSR and the first client render.
+  // Wallet state and disabled attributes are only rendered after hydration.
+  const [mounted, setMounted] = useState(false);
+
+  async function syncState(quiet = false) {
+    try {
+      const result = await loadWalletBootstrap();
+      if (!result.ok) throw new Error(result.data.error ?? "Could not load the demo wallet.");
+      if (!result.data.state) throw new Error("The demo wallet response was incomplete.");
+      setState(result.data.state);
+    } catch (error) {
+      if (!quiet) setNotice(error instanceof Error ? error.message : "Could not load the server-backed demo wallet.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const loadPoints = () => {
-      const stored = Number(
-        window.localStorage.getItem(
-          "civiclens_civic_points"
-        ) ?? "0"
-      );
-
-      if (Number.isFinite(stored)) {
-        setPoints(Math.max(0, stored));
-      }
-    };
-
-    loadPoints();
-
-    window.addEventListener("storage", loadPoints);
-
-    return () => {
-      window.removeEventListener(
-        "storage",
-        loadPoints
-      );
-    };
+    setMounted(true);
+    const sync = () => { void syncState(true); };
+    void syncState();
+    window.addEventListener(DEMO_REWARDS_UPDATED_EVENT, sync);
+    return () => window.removeEventListener(DEMO_REWARDS_UPDATED_EVENT, sync);
   }, []);
 
-  const level = getLevel(points);
+  async function runAction(payload: Record<string, string>): Promise<{ outcome: string; message: string } | null> {
+    setBusy(true);
+    try {
+      const response = await fetch("/api/demo-rewards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "The demo action could not be completed.");
+      setState(data.state as DemoRewardState);
+      setNotice(String(data.message ?? "Demo action completed."));
+      window.dispatchEvent(new Event(DEMO_REWARDS_UPDATED_EVENT));
+      return { outcome: String(data.outcome ?? "ok"), message: String(data.message ?? "Demo action completed.") };
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "The demo action could not be completed.");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  const progress = level.next
-    ? Math.min(
-        100,
-        Math.max(
-          0,
-          ((points - level.start) /
-            (level.next - level.start)) *
-            100
-        )
-      )
-    : 100;
+  const filtered = useMemo(() => category === "All rewards" ? rewards : rewards.filter((reward) => reward.category === category), [category]);
+  const claimedIds = useMemo(() => new Set(state.claims.map((claim) => claim.rewardId)), [state.claims]);
 
-  const nextReward =
-    rewards.find((reward) => reward.points > points) ??
-    rewards[rewards.length - 1];
+  async function handleClaim(reward: Reward) {
+    const result = await runAction({ action: "claim", rewardId: reward.id });
+    if (result?.outcome === "claimed") setShowWallet(true);
+  }
 
-  const pointsToReward = Math.max(
-    0,
-    nextReward.points - points
-  );
+  async function handleVerify(reportId: string) {
+    await runAction({ action: "verify-report", reportId });
+  }
+
+  async function handleRedeem(code: string) {
+    await runAction({ action: "redeem", code });
+  }
+
+  async function addSampleReport() {
+    await runAction({ action: "sample-report", title: "Overflowing public waste bin", category: "Garbage" });
+  }
+
+  async function resetDemo() {
+    const result = await runAction({ action: "reset" });
+    if (result?.outcome === "reset") setShowWallet(true);
+  }
+
+  async function copyCode(code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setNotice(`${code} copied. Reminder: this code is demonstration-only.`);
+    } catch {
+      setNotice(`Demo code: ${code}. Copy it manually; it is not redeemable with a real merchant.`);
+    }
+  }
+
+  // Avoid SSR/client mismatches from async state, disabled props and locale dates.
+  // The server and first client render use this same deterministic placeholder.
+  if (!mounted) {
+    return (
+      <main className="rw-page" aria-busy="true">
+        <div className="rw-shell">
+          <CivicLensHeader active="rewards" />
+          <div className="rw-demo-banner"><span className="rw-pulse" /> INTERACTIVE PROTOTYPE <span className="rw-banner-sep">/</span> LOADING DEMO WALLET</div>
+          <section className="rw-hero">
+            <div className="rw-hero-copy"><div className="rw-eyebrow"><span /> GOOD CITIZENSHIP, LITTLE PERKS</div><h1>Good for your city.<br /><em>A little good for you.</em></h1><p>Connecting to the server-backed demonstration wallet…</p></div>
+            <div className="rw-hero-visual"><div className="rw-visual-label">SMALL ACTIONS. BETTER STREETS.</div><MiniIllustration kind="city" /></div>
+          </section>
+          <div className="rw-notice" role="status"><span>…</span><p>Loading your demo wallet…</p></div>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-[#07090d] text-white">
-      <div className="mx-auto max-w-6xl px-5 py-8 md:px-8">
-        <header className="flex items-center justify-between">
-          <a
-            href="/"
-            className="text-xl font-black tracking-[0.22em]"
-          >
-            CIVICLENS
-          </a>
+    <main className="rw-page">
+      <div className="rw-shell">
+        <CivicLensHeader active="rewards" />
 
-          <div className="flex flex-wrap gap-3">
-            <a
-              href="/track"
-              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400 hover:bg-white/[0.08]"
-            >
-              TRACK
-            </a>
+        <div className="rw-demo-banner"><span className="rw-pulse"/> INTERACTIVE PROTOTYPE <span className="rw-banner-sep">/</span> ALL OFFERS & CODES ARE DEMONSTRATIONS ONLY</div>
 
-            <a
-              href="/dashboard"
-              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400 hover:bg-white/[0.08]"
-            >
-              AUTHORITY
-            </a>
-          </div>
-        </header>
-
-        <section className="mt-16 max-w-4xl">
-          <div className="text-xs font-bold uppercase tracking-[0.25em] text-amber-300">
-            Citizen participation
-          </div>
-
-          <h1 className="mt-4 text-5xl font-black tracking-tight md:text-7xl">
-            CIVIC REWARDS
-          </h1>
-
-          <p className="mt-5 max-w-3xl text-base leading-7 text-zinc-500">
-            CivicLens does not reward people for spamming
-            complaints. It rewards meaningful civic
-            participation, with points designed to become
-            real partner discounts, recognition and
-            community benefits.
-          </p>
+        <section className="rw-hero">
+          <div className="rw-hero-copy"><div className="rw-eyebrow"><span/> GOOD CITIZENSHIP, LITTLE PERKS</div><h1>Good for your city.<br/><em>A little good for you.</em></h1><p>Submit a useful civic report, run the simulated quality check, then use demo points to try a coupon-style reward. This shows the proposed experience; it does not issue real benefits.</p><div className="rw-hero-actions"><a href="/#report-workspace" className="rw-button rw-button-primary">Report a civic issue <span>↗</span></a><button className="rw-button rw-button-secondary" onClick={() => setShowWallet((visible) => !visible)}>{showWallet ? "Hide my wallet" : "View my demo wallet"} <span>↓</span></button></div><div className="rw-trust-note"><span>✓</span> Quality over quantity · points are only added after the demo review step</div></div>
+          <div className="rw-hero-visual"><div className="rw-visual-label">SMALL ACTIONS. BETTER STREETS.</div><MiniIllustration kind="city"/><div className="rw-sticker rw-sticker-blue"><b>+25</b><small>ON REVIEW</small></div><div className="rw-sticker rw-sticker-orange"><span>✳</span><small>LOCAL GOOD</small></div><div className="rw-visual-foot"><span className="rw-visual-dot"/> One useful report can start a chain reaction.</div></div>
         </section>
 
-        <section className="mt-10 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-3xl border border-amber-400/20 bg-amber-400/[0.05] p-7">
-            <div className="flex flex-wrap items-start justify-between gap-5">
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
-                  Current civic balance
-                </div>
+        {loading && <div className="rw-notice" role="status"><span>…</span><p>Connecting to your server-backed demo wallet…</p></div>}{notice && <div className="rw-notice" role="status"><span>ⓘ</span><p>{notice}</p><button onClick={() => setNotice("")} aria-label="Dismiss message">×</button></div>}
 
-                <div className="mt-3 text-6xl font-black text-amber-300">
-                  {points}
-                </div>
+        <section className="rw-wallet-strip" aria-label="Demo wallet summary"><div className="rw-wallet-icon">✦</div><div className="rw-wallet-label"><small>YOUR DEMO WALLET</small><strong>{state.balance} <span>points</span></strong><p>Sample starter credit · anonymous demo wallet</p></div><div className="rw-wallet-divider"/><div className="rw-wallet-stat"><small>COUPONS CLAIMED</small><strong>{state.claims.length.toString().padStart(2, "0")}</strong></div><div className="rw-wallet-stat"><small>REDEMPTIONS TESTED</small><strong>{state.claims.filter((claim) => claim.status === "redeemed").length.toString().padStart(2, "0")}</strong></div><button className="rw-wallet-link" onClick={() => setShowWallet((visible) => !visible)}>{showWallet ? "Hide wallet ↑" : "Open wallet →"}</button></section>
 
-                <div className="mt-1 text-sm font-bold text-zinc-400">
-                  Civic Points
-                </div>
-              </div>
+        {showWallet && <section className="rw-my-wallet" id="my-wallet"><div className="rw-section-heading"><div><div className="rw-kicker">YOUR POCKET OF PERKS</div><h2>My demo wallet</h2></div><button className="rw-reset" disabled={busy || loading} onClick={() => { void resetDemo(); }}>Reset demo</button></div>{state.claims.length === 0 ? <div className="rw-empty-wallet"><span>✦</span><div><strong>Your wallet is waiting for its first perk.</strong><p>Claim an eligible sample offer below. Each claim gets a unique server-generated demo code with an enforced expiry and one-time simulated redemption.</p></div></div> : <div className="rw-claim-list">{state.claims.map((claim) => { const reward = rewards.find((item) => item.id === claim.rewardId); if (!reward) return null; const expiry = new Date(claim.expiresAt); return <article className="rw-claim" key={claim.claimId}><div className={`rw-claim-icon ${reward.color}`}>{reward.icon}</div><div className="rw-claim-main"><small>{reward.brand} · DEMO OFFER</small><strong>{reward.title}</strong><code>{claim.code}</code><p>{claim.status === "redeemed" ? `Tested on ${new Date(claim.redeemedAt ?? claim.claimedAt).toLocaleDateString("en-IN")}` : claim.status === "expired" ? `Expired on ${expiry.toLocaleDateString("en-IN")}` : `Expires ${expiry.toLocaleDateString("en-IN")}`}</p><button className="rw-copy-code" onClick={() => copyCode(claim.code)}>Copy code</button></div><div className="rw-claim-actions"><span className={`rw-status ${claim.status === "redeemed" ? "used" : claim.status === "expired" ? "expired" : ""}`}>{claim.status === "claimed" ? "Ready to try" : claim.status === "redeemed" ? "Redeemed" : "Expired"}</span>{claim.status === "claimed" && <button disabled={busy} onClick={() => { void handleRedeem(claim.code); }}>Test redeem</button>}</div></article>; })}</div>}<p className="rw-wallet-disclaimer">Codes are generated and stored by the demo server. They are not accepted by real merchants and do not represent an actual reward.</p></section>}
 
-              <div className="rounded-2xl border border-amber-400/15 bg-black/20 px-4 py-3 text-right">
-                <div className="text-[9px] font-black uppercase tracking-[0.16em] text-zinc-600">
-                  Current level
-                </div>
-                <div className="mt-1 text-xs font-black text-white">
-                  {level.name}
-                </div>
-              </div>
-            </div>
+        <section className="rw-report-review"><div className="rw-section-heading"><div><div className="rw-kicker">FROM REPORT TO REWARD</div><h2>Demo report review<span>.</span></h2><p>New reports stay pending. Run the server-side prototype check to simulate verification; accepted unique reports earn {DEMO_REPORT_REWARD} points once. Server-marked duplicates earn none.</p></div><button className="rw-sample-report" disabled={busy || loading} onClick={() => { void addSampleReport(); }}>+ Add sample report</button></div>{state.reports.length === 0 ? <div className="rw-empty-wallet"><span>◎</span><div><strong>No report activity in this demo yet.</strong><p>Submit a report on the homepage or add a fictional sample to test the verification-to-points flow.</p></div></div> : <div className="rw-report-grid">{state.reports.slice(0, 6).map((report) => <article className="rw-report-card" key={report.id}><div className="rw-report-card-top"><span className={`rw-report-status ${report.status}`}>{report.status === "pending" ? "Pending review" : report.status === "verified" ? "Verified · points awarded" : report.status === "rejected" ? "Quality check failed · no points" : "Duplicate · no points"}</span><span>{report.origin === "sample" ? "SAMPLE" : "CITIZEN REPORT"}</span></div><h3>{report.title}</h3><p>{report.category} · {new Date(report.createdAt).toLocaleDateString("en-IN")}</p><code>{report.id}</code><div className="rw-report-card-bottom"><strong>{report.status === "verified" ? `+${report.pointsAwarded} pts` : report.status === "pending" ? `+${DEMO_REPORT_REWARD} pts if approved` : "0 pts"}</strong>{report.status === "pending" ? <button disabled={busy} onClick={() => { void handleVerify(report.id); }}>Run demo quality check ↗</button> : <span>{report.status === "verified" ? "Awarded once ✓" : report.status === "rejected" ? "Quality failed ✓" : "Blocked ✓"}</span>}</div></article>)}</div>}<small className="rw-demo-caveat">The demo server checks title/category duplicates and review state. This is a simulated review, not an authority decision or production anti-fraud service.</small></section>
 
-            <div className="mt-8 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.16em]">
-              <span className="text-zinc-500">
-                Progress
-              </span>
+        <section className="rw-catalogue"><div className="rw-section-heading"><div><div className="rw-kicker">THE GOOD STUFF</div><h2>Perks people would actually use<span>.</span></h2><p>Sample offers designed around everyday needs. Illustrative only, not sponsored or redeemable.</p></div><div className="rw-catalogue-count"><b>{filtered.length.toString().padStart(2, "0")}</b><span>DEMO OFFERS</span></div></div><div className="rw-filter-row" role="group" aria-label="Filter rewards">{categories.map((item) => <button key={item} className={category === item ? "selected" : ""} onClick={() => setCategory(item)}>{item}</button>)}</div><div className="rw-reward-grid">{filtered.map((reward, index) => { const owned = claimedIds.has(reward.id); const eligible = state.balance >= reward.points; return <article className={`rw-reward-card rw-${reward.color}`} key={reward.id}><div className="rw-card-top"><span className="rw-partner-tag">SAMPLE PARTNER</span><span className="rw-card-number">0{index + 1}</span></div><div className="rw-reward-art"><span className="rw-reward-icon">{reward.icon}</span><MiniIllustration kind="ticket"/><span className="rw-reward-value">{reward.value}</span></div><div className="rw-card-copy"><small>{reward.brand}</small><h3>{reward.title}</h3><p>{reward.terms}</p></div><div className="rw-card-bottom"><div className="rw-cost"><b>✦ {reward.points}</b><span>demo points</span></div><button disabled={busy || loading || owned || !eligible} onClick={() => { void handleClaim(reward); }}>{owned ? "Already claimed ✓" : eligible ? "Try this reward ↗" : `Need ${reward.points - state.balance} more`}</button></div><div className="rw-card-availability"><span/><span>Illustrative offer · not live</span></div></article>; })}</div></section>
 
-              <span className="text-amber-300">
-                {level.next
-                  ? `${level.next - points} to next badge`
-                  : "MAX LEVEL"}
-              </span>
-            </div>
+        <section className="rw-how"><div className="rw-how-intro"><div className="rw-kicker">BUILT AROUND REAL IMPACT</div><h2>Not more reports.<br/><em>Better reports.</em></h2><p>Rewards should encourage thoughtful civic participation—not spam, staged photos, or duplicate complaints.</p><div className="rw-how-illustration"><div className="rw-road"/><div className="rw-road-pin">✓</div><div className="rw-road-spark">✳</div></div></div><div className="rw-steps">{[{ n: "01", title: "Spot something that needs fixing", body: "Photograph a public issue and confirm where it happened." }, { n: "02", title: "Help verify the details", body: "This prototype checks report state and duplicate title/category matches before a demo credit is awarded." }, { n: "03", title: "Unlock a useful perk", body: "In a real launch, eligible offers would be supplied by verified partners." }].map((step) => <article className="rw-step" key={step.n}><span>{step.n}</span><div><h3>{step.title}</h3><p>{step.body}</p></div><b>↗</b></article>)}</div></section>
 
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-amber-300 transition-all"
-                style={{
-                  width: `${progress}%`,
-                }}
-              />
-            </div>
+        <section className="rw-ledger"><div className="rw-section-heading"><div><div className="rw-kicker">FOLLOW THE POINTS</div><h2>Demo activity ledger<span>.</span></h2><p>Every prototype points change or claim is listed here for visibility.</p></div><button className="rw-reset" onClick={() => setShowLedger((visible) => !visible)}>{showLedger ? "Hide activity" : "View activity"}</button></div>{showLedger && <div className="rw-ledger-list">{state.ledger.slice(0, 12).map((entry) => <article key={entry.id} className="rw-ledger-row"><span className="rw-ledger-mark">{entry.pointsDelta > 0 ? "+" : entry.pointsDelta < 0 ? "−" : "·"}</span><div><strong>{entry.title}</strong><p>{entry.details}</p><small>{new Date(entry.createdAt).toLocaleString("en-IN")}{entry.reference ? ` · ${entry.reference}` : ""}</small></div><b className={entry.pointsDelta > 0 ? "positive" : entry.pointsDelta < 0 ? "negative" : ""}>{entry.pointsDelta === 0 ? "—" : moneyDelta(entry.pointsDelta)}</b></article>)}</div>}</section>
 
-            <div className="mt-5 rounded-2xl border border-white/5 bg-black/20 p-4">
-              <div className="text-[9px] font-black uppercase tracking-[0.16em] text-zinc-600">
-                Next real-world benefit
-              </div>
-              <div className="mt-2 text-sm font-black text-white">
-                {nextReward.title}
-              </div>
-              <div className="mt-1 text-xs text-zinc-500">
-                {pointsToReward === 0
-                  ? "Unlocked"
-                  : `${pointsToReward} more points needed`}
-              </div>
-            </div>
-          </div>
+        <section className="rw-integrity"><div className="rw-integrity-icon">✓</div><div><small>OUR PROMISE</small><h2>Useful incentives. Honest rules.</h2><p>This prototype stores demo balances and an auditable activity ledger in the database, signs an anonymous demo-wallet cookie, and enforces claim, expiry, report completeness, duplicate-review, daily report limits, and one-time redemption transitions on the server. Review is simulated; offers and codes are not real merchant benefits. Authentication and production-grade anti-abuse monitoring are still required before a public launch.</p></div><div className="rw-integrity-stamp">DEMO<br/>MODE</div></section>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-7">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
-              How civic impact earns points
-            </div>
-
-            <div className="mt-5 space-y-4">
-              {[
-                [
-                  "Valid new civic report",
-                  "+5",
-                ],
-                [
-                  "Existing nearby issue / duplicate",
-                  "+2",
-                ],
-                [
-                  "Authority accepts report",
-                  "+10",
-                ],
-                [
-                  "Issue is successfully resolved",
-                  "+25",
-                ],
-                [
-                  "Citizen helps verify resolution",
-                  "+10",
-                ],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between gap-4"
-                >
-                  <span className="text-sm text-zinc-300">
-                    {label}
-                  </span>
-                  <span className="shrink-0 font-mono font-bold text-amber-300">
-                    {value}
-                  </span>
-                </div>
-              ))}
-
-              <div className="border-t border-white/5 pt-4 text-xs leading-5 text-zinc-600">
-                The MVP awards points immediately for a
-                submitted report. Additional lifecycle
-                rewards are designed for the production
-                authority workflow.
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-5 rounded-3xl border border-white/10 bg-white/[0.025] p-7">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
-                Reward catalogue
-              </div>
-
-              <h2 className="mt-2 text-2xl font-black">
-                Points → tangible benefits
-              </h2>
-            </div>
-
-            <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-600">
-              Partner rewards shown as MVP examples
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {rewards.map((reward) => {
-              const unlocked =
-                points >= reward.points;
-
-              return (
-                <div
-                  key={reward.points}
-                  className={`rounded-2xl border p-5 ${
-                    unlocked
-                      ? "border-amber-400/30 bg-amber-400/[0.06]"
-                      : "border-white/5 bg-black/20"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="font-mono text-xs font-bold text-amber-300">
-                        {reward.points.toLocaleString()} PTS
-                      </div>
-
-                      <div className="mt-2 text-sm font-black text-white">
-                        {reward.title}
-                      </div>
-                    </div>
-
-                    <div
-                      className={`rounded-full px-2 py-1 text-[8px] font-black tracking-widest ${
-                        unlocked
-                          ? "bg-amber-300 text-black"
-                          : "bg-white/5 text-zinc-600"
-                      }`}
-                    >
-                      {unlocked
-                        ? "UNLOCKED"
-                        : reward.status}
-                    </div>
-                  </div>
-
-                  <p className="mt-3 text-xs leading-5 text-zinc-500">
-                    {reward.description}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="mt-5 rounded-3xl border border-white/10 bg-white/[0.025] p-7">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
-            Civic badge ladder
-          </div>
-
-          <div className="mt-6 grid gap-3 md:grid-cols-5">
-            {[
-              ["NEW CITIZEN", "0"],
-              ["CIVIC SCOUT", "100"],
-              ["CIVIC CONTRIBUTOR", "500"],
-              ["COMMUNITY GUARDIAN", "1000"],
-              ["CIVIC CHAMPION", "2500"],
-            ].map(([name, threshold], index) => (
-              <div
-                key={name}
-                className={`rounded-2xl border p-4 ${
-                  points >= Number(threshold)
-                    ? "border-amber-400/30 bg-amber-400/[0.06]"
-                    : "border-white/5 bg-black/20"
-                }`}
-              >
-                <div className="text-[9px] font-black tracking-[0.14em] text-zinc-500">
-                  0{index + 1}
-                </div>
-
-                <div className="mt-3 text-xs font-black">
-                  {name}
-                </div>
-
-                <div className="mt-1 font-mono text-[10px] text-amber-300">
-                  {Number(threshold).toLocaleString()} PTS
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-5 rounded-3xl border border-emerald-400/10 bg-emerald-400/[0.025] p-7">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">
-            Why rewards work
-          </div>
-
-          <p className="mt-3 max-w-4xl text-sm leading-6 text-zinc-400">
-            CivicLens is designed around quality over quantity:
-            a citizen is rewarded for useful evidence, accurate
-            participation and real-world resolution. In a city
-            deployment, local businesses can sponsor the reward
-            catalogue while the municipality benefits from higher
-            quality civic participation.
-          </p>
-        </section>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <a
-            href="/"
-            className="rounded-xl bg-emerald-400 px-5 py-3 text-xs font-black text-black hover:bg-emerald-300"
-          >
-            REPORT A CIVIC ISSUE
-          </a>
-
-          <a
-            href="/track"
-            className="rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-xs font-bold text-zinc-300 hover:bg-white/[0.08]"
-          >
-            TRACK A COMPLAINT
-          </a>
-        </div>
-
-        <footer className="mt-16 border-t border-white/5 pt-6 text-[10px] uppercase tracking-[0.15em] text-zinc-700">
-          CivicLens · Civic participation · Evidence first
-        </footer>
+        <footer className="rw-footer"><a href="/" className="rw-footer-brand">CivicLens <span>✳</span></a><p>See the issue. Spark action.</p><div><a href="/track">Track reports</a><a href="/dashboard">Authority dashboard</a><a href="/verify">Verify a report</a></div><small>REWARDS CONCEPT PROTOTYPE · NO LIVE SPONSORS OR REDEEMABLE COUPONS</small></footer>
       </div>
     </main>
   );

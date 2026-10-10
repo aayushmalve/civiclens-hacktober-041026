@@ -1,6 +1,8 @@
             
 "use client";
 
+import CivicLensHeader from "@/components/CivicLensHeader";
+
 import {
   ChangeEvent,
   DragEvent,
@@ -9,6 +11,7 @@ import {
   useState,
 } from "react";
 import * as exifr from "exifr";
+import { DEMO_REWARDS_UPDATED_EVENT } from "@/lib/demo-rewards";
 
 type LocationSource = "photo" | "device" | "user";
 
@@ -196,8 +199,9 @@ export default function Home() {
   const [civicPoints, setCivicPoints] =
     useState(0);
 
-  const [pointsEarned, setPointsEarned] =
-    useState(0);
+  const [rewardNotice, setRewardNotice] = useState(
+    "Submit a report to add it to the demo review queue. Points are awarded only after the simulated quality check."
+  );
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] =
@@ -215,44 +219,27 @@ export default function Home() {
     useRef(false);
 
   useEffect(() => {
-    const storedPoints = Number(
-      window.localStorage.getItem(
-        "civiclens_civic_points"
-      ) ?? "0"
-    );
-
-    if (Number.isFinite(storedPoints)) {
-      setCivicPoints(Math.max(0, storedPoints));
-    }
+    let active = true;
+    const syncDemoPoints = async () => {
+      try {
+        const response = await fetch("/api/demo-rewards", { cache: "no-store" });
+        const data = await response.json();
+        if (active && response.ok && Number.isFinite(data?.state?.balance)) {
+          setCivicPoints(Number(data.state.balance));
+        }
+      } catch {
+        // Civic reporting remains available even if the optional demo wallet is temporarily unavailable.
+      }
+    };
+    void syncDemoPoints();
+    window.addEventListener(DEMO_REWARDS_UPDATED_EVENT, syncDemoPoints);
+    window.addEventListener("focus", syncDemoPoints);
+    return () => {
+      active = false;
+      window.removeEventListener(DEMO_REWARDS_UPDATED_EVENT, syncDemoPoints);
+      window.removeEventListener("focus", syncDemoPoints);
+    };
   }, []);
-
-  function awardCivicPoints(amount: number) {
-    const safeAmount = Math.max(
-      0,
-      Math.round(amount)
-    );
-
-    const current = Number(
-      window.localStorage.getItem(
-        "civiclens_civic_points"
-      ) ?? "0"
-    );
-
-    const next = Math.max(
-      0,
-      Number.isFinite(current)
-        ? current + safeAmount
-        : safeAmount
-    );
-
-    window.localStorage.setItem(
-      "civiclens_civic_points",
-      String(next)
-    );
-
-    setCivicPoints(next);
-    setPointsEarned(safeAmount);
-  }
 
   function getRewardLevel(points: number) {
     if (points >= 2500) {
@@ -710,6 +697,21 @@ export default function Home() {
       getDepartment(analysis.category);
 
     try {
+      // Mint a short-lived, single-use reward proof before creating a new complaint.
+      // If the rewards service is unavailable, the civic report can still be submitted.
+      let rewardProof: string | undefined;
+      try {
+        const proofResponse = await fetch("/api/demo-rewards", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "issue-report-token", reportId: complaintId }),
+        });
+        const proofData = await proofResponse.json();
+        if (proofResponse.ok && typeof proofData.proof === "string") rewardProof = proofData.proof;
+      } catch {
+        // Preserve complaint submission if demo rewards are offline.
+      }
+
       const response = await fetch(
         "/api/complaints",
         {
@@ -735,6 +737,7 @@ export default function Home() {
               analysis.recommendedAction,
             department,
             location,
+            ...(rewardProof ? { rewardProof } : {}),
           }),
         }
       );
@@ -768,18 +771,27 @@ export default function Home() {
           savedComplaint.location,
       });
 
-      // Reward verified civic impact, not volume:
-      // 5 points for a new accepted report,
-      // 2 points when the system links it to
-      // an existing nearby issue.
-      awardCivicPoints(
-        data.duplicate ? 2 : 5
-      );
-
-      if (data.duplicate) {
-        setError(
-          "A similar unresolved civic issue already exists nearby. Your report was linked to the existing complaint."
-        );
+      // Register only if the complaint API consumed the one-time proof for this new report.
+      try {
+        if (!rewardProof || data.rewardProofAccepted !== true) {
+          setRewardNotice("Your civic complaint was saved. The demo rewards service could not verify this submission, so it was not added to the rewards queue.");
+        } else {
+          const rewardResponse = await fetch("/api/demo-rewards", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "register-report", reportId: String(savedComplaint.id), proof: rewardProof }),
+          });
+          const rewardData = await rewardResponse.json();
+          if (rewardResponse.ok) {
+            if (Number.isFinite(rewardData?.state?.balance)) setCivicPoints(Number(rewardData.state.balance));
+            setRewardNotice(String(rewardData.message ?? "Report linked to the demo rewards review queue."));
+            window.dispatchEvent(new Event(DEMO_REWARDS_UPDATED_EVENT));
+          } else {
+            setRewardNotice(String(rewardData.error ?? "Your civic complaint was saved, but the demo rewards queue could not link it."));
+          }
+        }
+      } catch {
+        setRewardNotice("Your civic complaint was saved, but the demo rewards service could not be reached. The complaint itself is still submitted.");
       }
     } catch (err) {
       setError(
@@ -817,66 +829,34 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#07090d] text-white">
       <div className="mx-auto max-w-6xl px-5 py-8 md:px-8">
-        <header className="mb-14 flex items-center justify-between">
-          <div>
-            <div className="text-xl font-black tracking-[0.22em]">
-              CIVICLENS
-            </div>
+        <CivicLensHeader active="report" />
 
-            <div className="mt-1 text-[10px] font-bold tracking-[0.2em] text-zinc-500">
-              CIVIC INTELLIGENCE
-            </div>
+        <section className="cl-hero">
+          <div className="cl-hero-copy">
+            <div className="cl-eyebrow"><span /> CIVIC PROBLEMS, MEET CIVIC ACTION</div>
+            <h1>See a problem.<br/><em>Change your city.</em></h1>
+            <p>One photo can start a better street. CivicLens uses AI to understand visible civic issues, confirm where they happened, and prepare a clear report for action.</p>
+            <div className="cl-hero-actions"><a href="#report-workspace" className="cl-primary-cta">Report an issue <b>↗</b></a><a href="/track" className="cl-secondary-cta">Follow a report <b>→</b></a></div>
+            <div className="cl-hero-proof"><span><b>01</b> Capture evidence</span><span><b>02</b> Verify the place</span><span><b>03</b> Prepare action</span></div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <a
-              href="/track"
-              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400 hover:bg-white/[0.08]"
-            >
-              TRACK
-            </a>
-
-            <a
-              href="/dashboard"
-              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400 hover:bg-white/[0.08]"
-            >
-              AUTHORITY
-            </a>
-
-            <a
-              href="/rewards"
-              className="rounded-full border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 text-[10px] font-black tracking-widest text-amber-300 hover:bg-amber-400/10"
-            >
-              {civicPoints} POINTS
-            </a>
-
-            <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400">
-              GEMMA 4
-            </div>
+          <div className="cl-city-art" aria-label="Illustration of a connected city">
+            <div className="cl-art-topline"><span>FIELD NOTE / 001</span><span>YOUR CITY, IN FOCUS</span></div>
+            <svg viewBox="0 0 560 350" role="img" aria-label="Stylized city buildings, road, trees and a location pin" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="clSky" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#d8efff"/><stop offset="1" stopColor="#fff0d8"/></linearGradient><linearGradient id="clRoad" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#234f94"/><stop offset="1" stopColor="#11284e"/></linearGradient></defs>
+              <rect x="10" y="10" width="540" height="330" rx="24" fill="url(#clSky)"/>
+              <circle cx="443" cy="72" r="33" fill="#ffb64d" opacity=".95"/><path d="M24 250 L24 170 L75 170 L75 135 L124 135 L124 204 L166 204 L166 115 L225 115 L225 190 L276 190 L276 148 L328 148 L328 215 L381 215 L381 170 L433 170 L433 220 L536 220 L536 290 L24 290Z" fill="#8fb4d8" opacity=".75"/>
+              <path d="M24 266 L24 213 L82 213 L82 178 L133 178 L133 228 L180 228 L180 157 L235 157 L235 229 L282 229 L282 188 L335 188 L335 236 L388 236 L388 200 L440 200 L440 237 L536 237 L536 290 L24 290Z" fill="#fffdf7"/>
+              <g fill="#2461ad"><rect x="40" y="229" width="12" height="18" rx="2"/><rect x="62" y="229" width="12" height="18" rx="2"/><rect x="96" y="196" width="12" height="18" rx="2"/><rect x="116" y="196" width="12" height="18" rx="2"/><rect x="195" y="178" width="12" height="20" rx="2"/><rect x="216" y="178" width="12" height="20" rx="2"/><rect x="295" y="209" width="12" height="18" rx="2"/><rect x="315" y="209" width="12" height="18" rx="2"/><rect x="402" y="219" width="12" height="18" rx="2"/><rect x="423" y="219" width="12" height="18" rx="2"/></g>
+              <path d="M10 290 L550 290 L550 340 L10 340Z" fill="url(#clRoad)"/><path d="M28 315 H532" stroke="#fff" strokeWidth="4" strokeDasharray="20 16" opacity=".9"/>
+              <g transform="translate(275 105)"><path d="M0 -42 C-25 -42 -43 -24 -43 0 C-43 31 0 70 0 70 S43 31 43 0 C43 -24 25 -42 0 -42Z" fill="#ff9628" stroke="#fff" strokeWidth="6"/><circle cy="0" r="13" fill="#fff"/><circle cy="0" r="6" fill="#1857a8"/></g>
+              <g transform="translate(72 254)"><rect x="-15" y="-30" width="30" height="30" rx="4" fill="#0b8f7b"/><path d="M0 -45 V-27 M-25 -30 L-14 -22 M25 -30 L14 -22" stroke="#0b8f7b" strokeWidth="5" strokeLinecap="round"/><circle cy="0" r="13" fill="#0b8f7b"/><rect x="-4" y="-7" width="8" height="16" rx="3" fill="#fff"/></g>
+              <g transform="translate(458 260)"><rect x="-8" y="-34" width="16" height="35" rx="7" fill="#d4a16b"/><circle cy="-47" r="24" fill="#168b78"/><circle cx="-18" cy="-33" r="16" fill="#28a58b"/></g>
+            </svg>
+            <div className="cl-art-note"><span className="cl-art-pin">⌖</span><div><strong>Every report has a starting point.</strong><small>Photo evidence · Confirmed location · Clear next step</small></div><span className="cl-art-arrow">↗</span></div>
           </div>
-        </header>
-
-        <section className="mb-12 max-w-3xl">
-          <div className="mb-4 text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">
-            Photograph → Intelligence → Action
-          </div>
-
-          <h1 className="text-4xl font-black leading-[1.05] tracking-tight md:text-6xl">
-            Turn civic problems
-            <br />
-            into action.
-          </h1>
-
-          <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400 md:text-lg">
-            Upload a photograph of a public problem.
-            CivicLens identifies the issue, assesses
-            visible severity, confirms the location,
-            routes it to the right civic department,
-            and prepares a submission-ready complaint.
-          </p>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <section id="report-workspace" className="cl-workspace grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5 md:p-7">
             {!preview ? (
               <label
@@ -1492,14 +1472,15 @@ export default function Home() {
                   </div>
 
                   <div className="mt-2 text-2xl font-black text-white">
-                    +{pointsEarned} Civic Points
+                    Points pending review
                   </div>
 
                   <p className="mt-1 text-xs leading-5 text-zinc-500">
-                    {pointsEarned >= 5
-                      ? "You earned Civic Points for making a meaningful report. Verified impact can unlock higher rewards."
-                      : "This report matched an existing issue, so you received a smaller participation reward."}
+                    {rewardNotice}
                   </p>
+                  <a href="/rewards" className="mt-3 inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-300 hover:text-amber-200">
+                    Continue to demo rewards <span aria-hidden="true">↗</span>
+                  </a>
                 </div>
 
                 <div className="min-w-[220px]">
@@ -1541,10 +1522,10 @@ export default function Home() {
                 What your points can become
               </div>
               <div className="mt-2 text-xs leading-5 text-zinc-400">
-                Civic Points are designed to unlock partner discounts,
-                civic badges and community recognition. Example launch
-                rewards: 500 pts → ₹50 partner voucher · 1,000 pts →
-                ₹100 voucher · 2,500 pts → Civic Champion certificate.
+                Demo offers at Civic Rewards show how partner discounts,
+                digital gifts and community recognition could work. Sample
+                vouchers and coupon codes are not redeemable; no live partner
+                inventory or sponsorship is active in this prototype.
               </div>
               <a
                 href="/rewards"

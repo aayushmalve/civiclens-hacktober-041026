@@ -1,5 +1,7 @@
 "use client";
 
+import CivicLensHeader from "@/components/CivicLensHeader";
+
 import {
   FormEvent,
   useState,
@@ -167,35 +169,9 @@ export default function TrackPage() {
     : null;
 
   return (
-    <main className="min-h-screen bg-[#07090d] text-white">
+    <main className="cl-interior cl-interior-track">
       <div className="mx-auto max-w-5xl px-5 py-8 md:px-8">
-        <header className="mb-16 flex items-center justify-between">
-          <a href="/" className="block">
-            <div className="text-xl font-black tracking-[0.22em]">
-              CIVICLENS
-            </div>
-
-            <div className="mt-1 text-[10px] font-bold tracking-[0.2em] text-zinc-500">
-              CIVIC INTELLIGENCE
-            </div>
-          </a>
-
-          <div className="flex items-center gap-3">
-            <a
-              href="/dashboard"
-              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400 hover:bg-white/[0.08]"
-            >
-              AUTHORITY
-            </a>
-
-            <a
-              href="/"
-              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400 hover:bg-white/[0.08]"
-            >
-              REPORT ISSUE
-            </a>
-          </div>
-        </header>
+        <CivicLensHeader active="track" />
 
         <section className="mb-10 max-w-3xl">
           <div className="mb-4 text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">

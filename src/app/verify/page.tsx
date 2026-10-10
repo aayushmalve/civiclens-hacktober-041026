@@ -1,5 +1,7 @@
 "use client";
 
+import CivicLensHeader from "@/components/CivicLensHeader";
+
 import {
   ChangeEvent,
   FormEvent,
@@ -241,31 +243,9 @@ export default function VerifyPage() {
     );
 
   return (
-    <main className="min-h-screen bg-[#08090c] text-white">
+    <main className="cl-interior cl-interior-verify">
       <div className="mx-auto max-w-7xl px-6 py-8">
-        <header className="mb-8 flex flex-col gap-3 border-b border-white/10 pb-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black font-black">
-              CL
-            </div>
-
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.25em] text-white/40">
-                CivicLens Authority
-              </div>
-
-              <h1 className="text-3xl font-black tracking-tight">
-                Resolution Verification
-              </h1>
-            </div>
-          </div>
-
-          <p className="max-w-3xl text-sm text-white/50">
-            Upload before and after evidence. Gemma compares
-            the visible condition and determines whether the
-            reported civic issue was actually resolved.
-          </p>
-        </header>
+        <CivicLensHeader active="authority" />
 
         {error && (
           <div className="mb-6 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
