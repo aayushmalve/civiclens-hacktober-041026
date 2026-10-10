@@ -1,8 +1,14 @@
 type ActiveTab = "report" | "track" | "authority" | "rewards";
 
-type Props = { active: ActiveTab };
+type Props = {
+  active: ActiveTab;
+};
 
-const navigation: { key: ActiveTab; href: string; label: string }[] = [
+const navigation: {
+  key: ActiveTab;
+  href: string;
+  label: string;
+}[] = [
   { key: "report", href: "/", label: "Report an issue" },
   { key: "track", href: "/track", label: "Track reports" },
   { key: "authority", href: "/dashboard", label: "Authority dashboard" },
@@ -26,6 +32,7 @@ export default function CivicLensHeader({ active }: Props) {
           <small>SEE THE ISSUE. SPARK ACTION.</small>
         </span>
       </a>
+
       <nav className="cl-global-nav" aria-label="Main navigation">
         {navigation.map((item) => (
           <a
